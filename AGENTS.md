@@ -1,28 +1,40 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-01-20T17:18:00+09:00
-**Commit:** 3d3d3e49
+**Generated:** 2026-01-26T14:50:00+09:00
+**Commit:** 9d66b807
 **Branch:** dev
+
+---
+
+## **IMPORTANT: PULL REQUEST TARGET BRANCH**
+
+> **ALL PULL REQUESTS MUST TARGET THE `dev` BRANCH.**
+>
+> **DO NOT CREATE PULL REQUESTS TARGETING `master` BRANCH.**
+>
+> PRs to `master` will be automatically rejected by CI.
+
+---
 
 ## OVERVIEW
 
-ClaudeCode plugin implementing multi-model agent orchestration (Claude Opus 4.5, GPT-5.2, Gemini 3, Grok, GLM-4.7). 31 lifecycle hooks, 20+ tools (LSP, AST-Grep, delegation), 10 specialized agents, Claude Code compatibility layer. "oh-my-zsh" for ClaudeCode.
+OpenCode plugin: multi-model agent orchestration (Claude Opus 4.5, GPT-5.2, Gemini 3 Flash, Grok Code). 32 lifecycle hooks, 20+ tools (LSP, AST-Grep, delegation), 10 specialized agents, full Claude Code compatibility. "oh-my-zsh" for OpenCode.
 
 ## STRUCTURE
 
 ```
 oh-my-opencode/
 ├── src/
-│   ├── agents/        # 10 AI agents (Sisyphus, oracle, librarian, explore, frontend, etc.) - see src/agents/AGENTS.md
-│   ├── hooks/         # 31 lifecycle hooks (PreToolUse, PostToolUse, Stop, etc.) - see src/hooks/AGENTS.md
-│   ├── tools/         # 20+ tools (LSP, AST-Grep, delegation, session) - see src/tools/AGENTS.md
-│   ├── features/      # Background agents, Claude Code compat layer - see src/features/AGENTS.md
-│   ├── shared/        # 43 cross-cutting utilities - see src/shared/AGENTS.md
-│   ├── cli/           # CLI installer, doctor, run - see src/cli/AGENTS.md
-│   ├── mcp/           # Built-in MCPs: websearch, context7, grep_app
+│   ├── agents/        # 10 AI agents - see src/agents/AGENTS.md
+│   ├── hooks/         # 32 lifecycle hooks - see src/hooks/AGENTS.md
+│   ├── tools/         # 20+ tools - see src/tools/AGENTS.md
+│   ├── features/      # Background agents, Claude Code compat - see src/features/AGENTS.md
+│   ├── shared/        # 55 cross-cutting utilities - see src/shared/AGENTS.md
+│   ├── cli/           # CLI installer, doctor - see src/cli/AGENTS.md
+│   ├── mcp/           # Built-in MCPs - see src/mcp/AGENTS.md
 │   ├── config/        # Zod schema, TypeScript types
-│   └── index.ts       # Main plugin entry (589 lines)
-├── script/            # build-schema.ts, publish.ts, build-binaries.ts
+│   └── index.ts       # Main plugin entry (672 lines)
+├── script/            # build-schema.ts, build-binaries.ts
 ├── packages/          # 7 platform-specific binaries
 └── dist/              # Build output (ESM + .d.ts)
 ```
@@ -58,18 +70,18 @@ oh-my-opencode/
 
 **Rules:**
 - NEVER write implementation before test
-- NEVER delete failing tests to "pass" - fix the code
-- Test file naming: `*.test.ts` alongside source
-- BDD comments: `#given`, `#when`, `#then` (same as AAA)
+- NEVER delete failing tests - fix the code
+- Test file: `*.test.ts` alongside source (100 test files)
+- BDD comments: `//#given`, `//#when`, `//#then`
 
 ## CONVENTIONS
 
 - **Package manager**: Bun only (`bun run`, `bun build`, `bunx`)
 - **Types**: bun-types (not @types/node)
 - **Build**: `bun build` (ESM) + `tsc --emitDeclarationOnly`
-- **Exports**: Barrel pattern in index.ts; explicit named exports
-- **Naming**: kebab-case directories, `createXXXHook`/`createXXXTool` factories
-- **Testing**: BDD comments `#given/#when/#then`, 83 test files
+- **Exports**: Barrel pattern via index.ts
+- **Naming**: kebab-case dirs, `createXXXHook`/`createXXXTool` factories
+- **Testing**: BDD comments, 100 test files
 - **Temperature**: 0.1 for code agents, max 0.3
 
 ## ANTI-PATTERNS (THIS PROJECT)
@@ -120,8 +132,7 @@ oh-my-opencode/
 bun run typecheck      # Type check
 bun run build          # ESM + declarations + schema
 bun run rebuild        # Clean + Build
-bun run build:schema   # Schema only
-bun test               # Run tests (83 test files)
+bun test               # 100 test files
 ```
 
 ## DEPLOYMENT
@@ -143,16 +154,14 @@ bun test               # Run tests (83 test files)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/agents/atlas.ts` | 1383 | Orchestrator agent, 7-section delegation, wisdom accumulation |
-| `src/features/builtin-skills/skills.ts` | 1203 | Skill definitions (playwright, git-master, frontend-ui-ux) |
-| `src/agents/prometheus-prompt.ts` | 1196 | Planning agent, interview mode, Momus loop |
-| `src/features/background-agent/manager.ts` | 1165 | Task lifecycle, concurrency, notification batching |
-| `src/hooks/atlas/index.ts` | 771 | Orchestrator hook implementation |
-| `src/tools/delegate-task/tools.ts` | 770 | Category-based task delegation |
-| `src/cli/config-manager.ts` | 616 | JSONC parsing, multi-level config |
-| `src/agents/sisyphus.ts` | 615 | Main Sisyphus prompt |
-| `src/features/builtin-commands/templates/refactor.ts` | 619 | Refactoring command template |
-| `src/tools/lsp/client.ts` | 596 | LSP protocol, JSON-RPC |
+| `src/features/builtin-skills/skills.ts` | 1729 | Skill definitions |
+| `src/features/background-agent/manager.ts` | 1377 | Task lifecycle, concurrency |
+| `src/agents/prometheus-prompt.ts` | 1196 | Planning agent |
+| `src/tools/delegate-task/tools.ts` | 1070 | Category-based delegation |
+| `src/hooks/atlas/index.ts` | 752 | Orchestrator hook |
+| `src/cli/config-manager.ts` | 664 | JSONC config parsing |
+| `src/index.ts` | 672 | Main plugin entry |
+| `src/features/builtin-commands/templates/refactor.ts` | 619 | Refactor command template |
 
 ## MCP ARCHITECTURE
 
