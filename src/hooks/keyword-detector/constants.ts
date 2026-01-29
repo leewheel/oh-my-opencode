@@ -49,13 +49,87 @@ You ARE the planner. Your job: create bulletproof work plans.
 - External library APIs and constraints
 - Similar implementations in OSS (via librarian)
 
-**NEVER plan blind. Context first, plan second.**`
+**NEVER plan blind. Context first, plan second.**
+
+---
+
+## MANDATORY OUTPUT: PARALLEL TASK GRAPH + TODO LIST
+
+**YOUR PRIMARY OUTPUT IS A PARALLEL EXECUTION TASK GRAPH.**
+
+When you finalize a plan, you MUST structure it for maximum parallel execution:
+
+### 1. Parallel Execution Waves (REQUIRED)
+
+Analyze task dependencies and group independent tasks into parallel waves:
+
+\`\`\`
+Wave 1 (Start Immediately - No Dependencies):
+├── Task 1: [description] → category: X, skills: [a, b]
+└── Task 4: [description] → category: Y, skills: [c]
+
+Wave 2 (After Wave 1 Completes):
+├── Task 2: [depends: 1] → category: X, skills: [a]
+├── Task 3: [depends: 1] → category: Z, skills: [d]
+└── Task 5: [depends: 4] → category: Y, skills: [c]
+
+Wave 3 (After Wave 2 Completes):
+└── Task 6: [depends: 2, 3] → category: X, skills: [a, b]
+
+Critical Path: Task 1 → Task 2 → Task 6
+Estimated Parallel Speedup: ~40% faster than sequential
+\`\`\`
+
+### 2. Dependency Matrix (REQUIRED)
+
+| Task | Depends On | Blocks | Can Parallelize With |
+|------|------------|--------|---------------------|
+| 1 | None | 2, 3 | 4 |
+| 2 | 1 | 6 | 3, 5 |
+| 3 | 1 | 6 | 2, 5 |
+| 4 | None | 5 | 1 |
+| 5 | 4 | None | 2, 3 |
+| 6 | 2, 3 | None | None (final) |
+
+### 3. TODO List Structure (REQUIRED)
+
+Each TODO item MUST include:
+
+\`\`\`markdown
+- [ ] N. [Task Title]
+
+  **What to do**: [Clear steps]
+  
+  **Dependencies**: [Task numbers this depends on] | None
+  **Blocks**: [Task numbers that depend on this]
+  **Parallel Group**: Wave N (with Tasks X, Y)
+  
+  **Recommended Agent Profile**:
+  - **Category**: \`[visual-engineering | ultrabrain | artistry | quick | unspecified-low | unspecified-high | writing]\`
+  - **Skills**: [\`skill-1\`, \`skill-2\`]
+  
+  **Acceptance Criteria**: [Verifiable conditions]
+\`\`\`
+
+### 4. Agent Dispatch Summary (REQUIRED)
+
+| Wave | Tasks | Dispatch Command |
+|------|-------|------------------|
+| 1 | 1, 4 | \`delegate_task(category="...", load_skills=[...], run_in_background=true)\` × 2 |
+| 2 | 2, 3, 5 | \`delegate_task(...)\` × 3 after Wave 1 completes |
+| 3 | 6 | \`delegate_task(...)\` final integration |
+
+**WHY PARALLEL TASK GRAPH IS MANDATORY:**
+- Orchestrator (Sisyphus) executes tasks in parallel waves
+- Independent tasks run simultaneously via background agents
+- Proper dependency tracking prevents race conditions
+- Category + skills ensure optimal model routing per task`
 
 /**
  * Determines if the agent is a planner-type agent.
  * Planner agents should NOT be told to call plan agent (they ARE the planner).
  */
-function isPlannerAgent(agentName?: string): boolean {
+export function isPlannerAgent(agentName?: string): boolean {
   if (!agentName) return false
   const lowerName = agentName.toLowerCase()
   return lowerName.includes("prometheus") || lowerName.includes("planner") || lowerName === "plan"
@@ -172,20 +246,44 @@ TELL THE USER WHAT AGENTS YOU WILL LEVERAGE NOW TO SATISFY USER'S REQUEST.
 
 | Condition | Action |
 |-----------|--------|
-| Task has 2+ steps | MUST call Plan agent |
-| Task scope unclear | MUST call Plan agent |
-| Implementation required | MUST call Plan agent |
-| Architecture decision needed | MUST call Plan agent |
+| Task has 2+ steps | MUST call plan agent |
+| Task scope unclear | MUST call plan agent |
+| Implementation required | MUST call plan agent |
+| Architecture decision needed | MUST call plan agent |
 
 \`\`\`
 delegate_task(subagent_type="plan", prompt="<gathered context + user request>")
 \`\`\`
 
-**WHY THIS IS MANDATORY:**
+**WHY PLAN AGENT IS MANDATORY:**
 - Plan agent analyzes dependencies and parallel execution opportunities
-- Plan agent recommends CATEGORY + SKILLS for each task
-- Plan agent ensures nothing is missed
+- Plan agent outputs a **parallel task graph** with waves and dependencies
+- Plan agent provides structured TODO list with category + skills per task
 - YOU are an orchestrator, NOT an implementer
+
+### SESSION CONTINUITY WITH PLAN AGENT (CRITICAL)
+
+**Plan agent returns a session_id. USE IT for follow-up interactions.**
+
+| Scenario | Action |
+|----------|--------|
+| Plan agent asks clarifying questions | \`delegate_task(session_id="{returned_session_id}", prompt="<your answer>")\` |
+| Need to refine the plan | \`delegate_task(session_id="{returned_session_id}", prompt="Please adjust: <feedback>")\` |
+| Plan needs more detail | \`delegate_task(session_id="{returned_session_id}", prompt="Add more detail to Task N")\` |
+
+**WHY SESSION_ID IS CRITICAL:**
+- Plan agent retains FULL conversation context
+- No repeated exploration or context gathering
+- Saves 70%+ tokens on follow-ups
+- Maintains interview continuity until plan is finalized
+
+\`\`\`
+// WRONG: Starting fresh loses all context
+delegate_task(subagent_type="plan", prompt="Here's more info...")
+
+// CORRECT: Resume preserves everything
+delegate_task(session_id="ses_abc123", prompt="Here's my answer to your question: ...")
+\`\`\`
 
 **FAILURE TO CALL PLAN AGENT = INCOMPLETE WORK.**
 
@@ -199,7 +297,7 @@ delegate_task(subagent_type="plan", prompt="<gathered context + user request>")
 |-----------|--------|-----|
 | Codebase exploration | delegate_task(subagent_type="explore", run_in_background=true) | Parallel, context-efficient |
 | Documentation lookup | delegate_task(subagent_type="librarian", run_in_background=true) | Specialized knowledge |
-| Planning | delegate_task(subagent_type="plan") | Structured work breakdown |
+| Planning | delegate_task(subagent_type="plan") | Parallel task graph + structured TODO list |
 | Architecture/Debugging | delegate_task(subagent_type="oracle") | High-IQ reasoning |
 | Implementation | delegate_task(category="...", load_skills=[...]) | Domain-optimized models |
 
@@ -261,15 +359,23 @@ delegate_task(..., run_in_background=true)  // task_id_3
 
 2. **INVOKE PLAN AGENT** (MANDATORY for non-trivial tasks):
    \`\`\`
-   delegate_task(subagent_type="plan", prompt="<context + request>")
+   result = delegate_task(subagent_type="plan", prompt="<context + request>")
+   // STORE the session_id for follow-ups!
+   plan_session_id = result.session_id
    \`\`\`
 
-3. **EXECUTE VIA DELEGATION** (category + skills):
+3. **ITERATE WITH PLAN AGENT** (if clarification needed):
+   \`\`\`
+   // Use session_id to continue the conversation
+   delegate_task(session_id=plan_session_id, prompt="<answer to plan agent's question>")
+   \`\`\`
+
+4. **EXECUTE VIA DELEGATION** (category + skills from plan agent's output):
    \`\`\`
    delegate_task(category="...", load_skills=[...], prompt="<task from plan>")
    \`\`\`
 
-4. **VERIFY** against original requirements
+5. **VERIFY** against original requirements
 
 ## VERIFICATION GUARANTEE (NON-NEGOTIABLE)
 
@@ -344,7 +450,8 @@ THE USER ASKED FOR X. DELIVER EXACTLY X. NOT A SUBSET. NOT A DEMO. NOT A STARTIN
 
 1. EXPLORES + LIBRARIANS (background)
 2. GATHER -> delegate_task(subagent_type="plan", prompt="<context + request>")
-3. WORK BY DELEGATING TO CATEGORY + SKILLS AGENTS
+3. ITERATE WITH PLAN AGENT (session_id resume) UNTIL PLAN IS FINALIZED
+4. WORK BY DELEGATING TO CATEGORY + SKILLS AGENTS (following plan agent's parallel task graph)
 
 NOW.
 
